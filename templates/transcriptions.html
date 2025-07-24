@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcrições - AudioToText</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="nav-links" style="position: absolute; top: 30px; left: 40px; z-index: 2;">
+                <a href="/" class="nav-link" style="background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; border-radius: 50px; text-decoration: none; font-weight: 500; backdrop-filter: blur(10px); display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-microphone"></i>
+                    Gravações
+                </a>
+            </div>
+            <h1>📄 Transcrições</h1>
+            <p>Gerencie suas transcrições e crie resumos inteligentes</p>
+            <div class="user-info">
+                <span>👤 {{ user_name }}</span>
+                <a href="/logout" class="logout-btn">🚪 Sair</a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div id="status" class="status hidden"></div>
+            
+            <div class="recordings-section">
+                <h2>📋 Suas Transcrições</h2>
+                <div id="transcriptionsList" class="transcriptions-list">
+                    <div class="loading" style="text-align: center; color: rgba(255,255,255,0.7); padding: 40px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Carregando transcrições...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modais -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 80vh; overflow-y: auto;">
+            <h3 id="viewModalTitle">📄 Transcrição</h3>
+            <div id="viewModalContent" class="transcription-text" style="white-space: pre-wrap;"></div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeViewModal()">❌ Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="summaryModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 80vh; overflow-y: auto;">
+            <h3>📋 Resumo da Consulta</h3>
+            <div id="summaryModalContent" class="transcription-text" style="white-space: pre-wrap;"></div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeSummaryModal()">❌ Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="promptModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <h3>🤖 Prompt Personalizado para IA</h3>
+            <p style="color: rgba(255,255,255,0.8); margin-bottom: 20px;">Descreva como você gostaria que a IA analise e resuma esta transcrição:</p>
+            
+            <textarea id="customPromptInput" placeholder="Exemplo: Foque nos sintomas principais e medicações prescritas. Organize em formato de lista com prioridades..." 
+                maxlength="1000"></textarea>
+            
+            <div class="prompt-tip">
+                💡 Dica: Seja específico sobre o formato desejado, pontos importantes a destacar, ou estilo de resumo.
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn save" onclick="generateSummaryWithPrompt()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <i class="fas fa-magic"></i> Gerar Resumo
+                </button>
+                <button class="modal-btn cancel" onclick="closePromptModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let transcriptions = [];
+        let currentFilename = '';
+        
+        // Elementos DOM
+        const transcriptionsList = document.getElementById('transcriptionsList');
+        const status = document.getElementById('status');
+        const viewModal = document.getElementById('viewModal');
+        const summaryModal = document.getElementById('summaryModal');
+        
+        // Carregar transcrições ao inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTranscriptions();
+        });
+        
+        // Carregar lista de transcrições
+        async function loadTranscriptions() {
+            try {
+                const response = await fetch('/api/transcriptions', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 302 || response.status === 401) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    transcriptions = data.transcriptions || [];
+                    renderTranscriptions();
+                } else {
+                    showStatus('❌ ' + (data.message || 'Erro desconhecido'), 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao carregar transcrições: ' + error.message, 'error');
+                transcriptionsList.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Erro ao carregar transcrições</h3>
+                        <p><strong>Erro:</strong> ${error.message}</p>
+                        <button onclick="loadTranscriptions()" style="margin-top: 10px; padding: 8px 16px; background: #4facfe; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            🔄 Tentar Novamente
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Renderizar lista de transcrições
+        function renderTranscriptions() {
+            if (transcriptions.length === 0) {
+                transcriptionsList.innerHTML = `
+                    <div style="text-align: center; color: rgba(255,255,255,0.7); padding: 40px;">
+                        <h3>📭 Nenhuma transcrição encontrada</h3>
+                        <p>Você ainda não possui transcrições.</p>
+                        <p>Vá para a <a href="/" style="color: #4facfe;">página de gravações</a> para criar suas primeiras transcrições.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                const html = transcriptions.map((t) => {
+                    return `
+                        <div class="transcription-card">
+                            <div class="card-header">
+                                <h3 class="patient-name">${escapeHtml(t.patient_name || 'Sem nome')}</h3>
+                                <div class="date-info">${escapeHtml(t.modified_date || 'Data não disponível')}</div>
+                            </div>
+                            
+                            <div class="preview-text">
+                                "${escapeHtml((t.preview || 'Prévia não disponível').substring(0, 150))}${(t.preview || '').length > 150 ? '...' : ''}"
+                            </div>
+                            
+                            ${t.has_summary ? '<div class="summary-indicator">✅ Resumo disponível</div>' : ''}
+                            
+                            <div class="card-actions">
+                                <button class="action-btn btn-view" onclick="viewTranscription('${escapeHtml(t.filename)}')">
+                                    <i class="fas fa-eye"></i>
+                                    Ver Transcrição
+                                </button>
+                                
+                                ${t.has_summary ? 
+                                    `<button class="action-btn btn-view-summary" onclick="viewSummary('${escapeHtml(t.summary_filename)}')">
+                                        <i class="fas fa-file-alt"></i>
+                                        Ver Resumo
+                                    </button>` :
+                                    `<button class="action-btn btn-summary" onclick="generateSummary('${escapeHtml(t.filename)}')">
+                                        <i class="fas fa-magic"></i>
+                                        Gerar Resumo
+                                    </button>`
+                                }
+                                
+                                <button class="action-btn btn-download" onclick="downloadTranscription('${escapeHtml(t.filename)}')">
+                                    <i class="fas fa-download"></i>
+                                    Download
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                transcriptionsList.innerHTML = html;
+                
+            } catch (error) {
+                transcriptionsList.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Erro ao renderizar transcrições</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Função para escapar HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Visualizar transcrição
+        async function viewTranscription(filename) {
+            try {
+                const response = await fetch(`/view_transcription/${encodeURIComponent(filename)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('viewModalTitle').textContent = '📄 Transcrição - ' + filename.replace('_transcricao.txt', '');
+                    document.getElementById('viewModalContent').textContent = data.content;
+                    viewModal.style.display = 'block';
+                } else {
+                    showStatus('❌ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao carregar transcrição: ' + error.message, 'error');
+            }
+        }
+        
+        // Gerar resumo
+        async function generateSummary(filename) {
+            currentFilename = filename;
+            document.getElementById('customPromptInput').value = '';
+            document.getElementById('promptModal').style.display = 'block';
+        }
+        
+        // Nova função para gerar resumo com prompt personalizado
+        async function generateSummaryWithPrompt() {
+            const customPrompt = document.getElementById('customPromptInput').value.trim();
+            
+            try {
+                closePromptModal();
+                showStatus('🤖 Gerando resumo personalizado com IA...', 'info');
+                
+                const response = await fetch('/api/generate_summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        filename: currentFilename,
+                        custom_prompt: customPrompt
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('✅ ' + data.message, 'success');
+                    document.getElementById('summaryModalContent').textContent = data.summary;
+                    summaryModal.style.display = 'block';
+                    loadTranscriptions(); // Recarregar lista
+                } else {
+                    showStatus('❌ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao gerar resumo: ' + error.message, 'error');
+            }
+        }
+        
+        // Função para fechar modal de prompt
+        function closePromptModal() {
+            document.getElementById('promptModal').style.display = 'none';
+        }
+        
+        // Visualizar resumo existente
+        async function viewSummary(filename) {
+            try {
+                const response = await fetch(`/api/view_summary/${encodeURIComponent(filename)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('summaryModalContent').textContent = data.content;
+                    summaryModal.style.display = 'block';
+                } else {
+                    showStatus('❌ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao carregar resumo: ' + error.message, 'error');
+            }
+        }
+        
+        // Download de transcrição
+        function downloadTranscription(filename) {
+            window.open(`/download_transcription/${encodeURIComponent(filename)}`, '_blank');
+        }
+        
+        // Fechar modais
+        function closeViewModal() {
+            viewModal.style.display = 'none';
+        }
+        
+        function closeSummaryModal() {
+            summaryModal.style.display = 'none';
+        }
+        
+        // Mostrar status
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.classList.remove('hidden');
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    status.classList.add('hidden');
+                }, 3000);
+            }
+        }
+        
+        // Fechar modais ao clicar fora
+        window.onclick = function(event) {
+            const viewModal = document.getElementById('viewModal');
+            const summaryModal = document.getElementById('summaryModal');
+            const promptModal = document.getElementById('promptModal');
+            
+            if (event.target === viewModal) {
+                closeViewModal();
+            }
+            if (event.target === summaryModal) {
+                closeSummaryModal();
+            }
+            if (event.target === promptModal) {
+                closePromptModal();
+            }
+        }
+    </script>
+</body>
+</html>

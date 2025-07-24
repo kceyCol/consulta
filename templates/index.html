@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioToText - Gravador de Áudio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="nav-links" style="position: absolute; top: 30px; left: 40px; z-index: 2;">
+                <a href="/transcriptions" class="nav-link" style="background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; border-radius: 50px; text-decoration: none; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); font-weight: 500; backdrop-filter: blur(10px); display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-file-alt"></i>
+                    Transcrições
+                </a>
+            </div>
+            <h1>🎤 AudioToText</h1>
+            <p>Sistema de Gravação e Transcrição de Áudio</p>
+            <div class="user-info">
+                <span>👤 {{ user_name }}</span>
+                <a href="/logout" class="logout-btn">🚪 Sair</a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="recording-controls">
+                <h2>🎙️ Controles de Gravação</h2>
+                <p>Clique em "Iniciar" para começar a gravar. A gravação será segmentada automaticamente a cada 5 minutos.</p>
+                
+                <div class="controls-row">
+                    <button id="recordBtn" class="btn record">🔴 Iniciar Gravação</button>
+                    <button id="stopBtn" class="btn stop" disabled>⏹️ Parar Gravação</button>
+                    <button id="refreshBtn" class="btn refresh">🔄 Atualizar Lista</button>
+                </div>
+            </div>
+            
+            <div id="status" class="status hidden"></div>
+            
+            <div class="recordings-section">
+                <h2>📁 Suas Gravações</h2>
+                <div id="recordingsList" class="recordings-list">
+                    <p>Carregando gravações...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Nome do Paciente -->
+    <div id="patientModal" class="modal">
+        <div class="modal-content">
+            <h3>👤 Nome do Paciente</h3>
+            <input type="text" id="patientNameInput" placeholder="Digite o nome do paciente (opcional)">
+            <div class="modal-buttons">
+                <button class="modal-btn save" onclick="saveWithPatientName()">💾 Salvar com Nome</button>
+                <button class="modal-btn cancel" onclick="saveWithoutPatientName()">📁 Salvar sem Nome</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Renomear -->
+    <div id="renameModal" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Renomear Gravação</h3>
+            <input type="text" id="renameInput" placeholder="Digite o novo nome">
+            <div class="modal-buttons">
+                <button class="modal-btn save" onclick="confirmRename()">✅ Confirmar</button>
+                <button class="modal-btn cancel" onclick="closeRenameModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Transcrição -->
+    <div id="transcriptionModal" class="modal transcription-modal">
+        <div class="modal-content">
+            <h3>📄 Transcrição</h3>
+            <div id="transcriptionText" class="transcription-text"></div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeTranscriptionModal()">❌ Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Confirmação -->
+    <div id="confirmModal" class="modal confirm-modal">
+        <div class="modal-content">
+            <h3>🗑️ Confirmar Exclusão</h3>
+            <p>Tem certeza que deseja deletar esta gravação?<br>
+            <strong>Esta ação não pode ser desfeita!</strong></p>
+            <div class="modal-buttons">
+                <button class="modal-btn save" style="background-color: #e74c3c;" onclick="confirmDelete()">🗑️ Deletar</button>
+                <button class="modal-btn cancel" onclick="closeConfirmModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
