@@ -1,0 +1,137 @@
+/* Estilos para modal de prompt personalizado */
+#customPromptInput {
+    width: 100% !important;
+    height: 150px !important;
+    padding: 15px !important;
+    border-radius: 10px !important;
+    border: 1px solid #d1d5db !important;
+    background: #f8fafc !important;
+    color: #374151 !important;
+    font-family: inherit !important;
+    resize: vertical !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+#customPromptInput:focus {
+    outline: none !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+#customPromptInput::placeholder {
+    color: #9ca3af !important;
+}
+
+/* Estilo para a dica do prompt */
+.prompt-tip {
+    margin: 15px 0 !important;
+    color: #6b7280 !important;
+    font-size: 0.9em !important;
+    background: #f3f4f6 !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    border-left: 4px solid #3b82f6 !important;
+}
+
+/* Botões de exportação */
+.modal-btn.export {
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 5px;
+}
+
+.modal-btn.export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.modal-btn.export i {
+    font-size: 16px;
+}
+
+/* Responsividade para botões de exportação */
+@media (max-width: 768px) {
+    .modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-btn.export {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Utilitários gerais */
+.error {
+    background: rgba(255, 0, 0, 0.2);
+    border: 1px solid rgba(255, 0, 0, 0.5);
+    color: #ff6b6b;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+#debugConsole {
+    background: rgba(0,0,0,0.8);
+    color: #00ff00;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-family: monospace;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #333;
+}
+
+/* Estilos para botões de ação gerais */
+.action-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.btn-view {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+.btn-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-view-summary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.btn-download {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}

@@ -6,6 +6,8 @@
     <title>Transcrições - AudioToText</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/transcriptions.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -31,7 +33,20 @@
             <div id="status" class="status hidden"></div>
             
             <div class="recordings-section">
-                <h2>📋 Suas Transcrições</h2>
+                <div class="section-header">
+                    <h2>📋 Suas Transcrições</h2>
+                    <div class="sort-controls">
+                        <label for="sortBy">🔄 Ordenar por:</label>
+                        <select id="sortBy" onchange="sortTranscriptions()">
+                            <option value="date">📅 Data (mais recente)</option>
+                            <option value="date-asc">📅 Data (mais antiga)</option>
+                            <option value="patient">👤 Paciente (A-Z)</option>
+                            <option value="patient-desc">👤 Paciente (Z-A)</option>
+                            <option value="size">📊 Tamanho (maior)</option>
+                            <option value="size-asc">📊 Tamanho (menor)</option>
+                        </select>
+                    </div>
+                </div>
                 <div id="transcriptionsList" class="transcriptions-list">
                     <div class="loading" style="text-align: center; color: rgba(255,255,255,0.7); padding: 40px;">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -58,6 +73,15 @@
             <h3>📋 Resumo da Consulta</h3>
             <div id="summaryModalContent" class="transcription-text" style="white-space: pre-wrap;"></div>
             <div class="modal-buttons">
+                <button class="modal-btn save" onclick="exportSummaryPDF()" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); margin-right: 10px;">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+                <button class="modal-btn save" onclick="exportSummaryDOCX()" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); margin-right: 10px;">
+                    <i class="fas fa-file-word"></i> Exportar DOCX
+                </button>
+                <button class="modal-btn save" onclick="downloadCompleteConversation()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-right: 10px;">
+                    <i class="fas fa-download"></i> Baixar Conversa Completa
+                </button>
                 <button class="modal-btn cancel" onclick="closeSummaryModal()">❌ Fechar</button>
             </div>
         </div>
@@ -87,6 +111,7 @@
     <script>
         let transcriptions = [];
         let currentFilename = '';
+        let currentSortBy = 'date'; // Ordenação padrão
         
         // Elementos DOM
         const transcriptionsList = document.getElementById('transcriptionsList');
@@ -98,6 +123,50 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadTranscriptions();
         });
+        
+        // Função para ordenar transcrições
+        function sortTranscriptions() {
+            const sortBy = document.getElementById('sortBy').value;
+            currentSortBy = sortBy;
+            
+            const sortedTranscriptions = [...transcriptions].sort((a, b) => {
+                switch (sortBy) {
+                    case 'date':
+                        // Data mais recente primeiro - usar timestamp numérico
+                        return (b.modified_timestamp || 0) - (a.modified_timestamp || 0);
+                    
+                    case 'date-asc':
+                        // Data mais antiga primeiro - usar timestamp numérico
+                        return (a.modified_timestamp || 0) - (b.modified_timestamp || 0);
+                    
+                    case 'patient':
+                        // Paciente A-Z
+                        const nameA = (a.patient_name || 'Sem nome').toLowerCase();
+                        const nameB = (b.patient_name || 'Sem nome').toLowerCase();
+                        return nameA.localeCompare(nameB, 'pt-BR');
+                    
+                    case 'patient-desc':
+                        // Paciente Z-A
+                        const nameA2 = (a.patient_name || 'Sem nome').toLowerCase();
+                        const nameB2 = (b.patient_name || 'Sem nome').toLowerCase();
+                        return nameB2.localeCompare(nameA2, 'pt-BR');
+                    
+                    case 'size':
+                        // Tamanho maior primeiro
+                        return (b.file_size || 0) - (a.file_size || 0);
+                    
+                    case 'size-asc':
+                        // Tamanho menor primeiro
+                        return (a.file_size || 0) - (b.file_size || 0);
+                    
+                    default:
+                        return 0;
+                }
+            });
+            
+            transcriptions = sortedTranscriptions;
+            renderTranscriptions();
+        }
         
         // Carregar lista de transcrições
         async function loadTranscriptions() {
@@ -123,7 +192,9 @@
                 
                 if (data.success) {
                     transcriptions = data.transcriptions || [];
-                    renderTranscriptions();
+                    // Aplicar ordenação padrão
+                    document.getElementById('sortBy').value = currentSortBy;
+                    sortTranscriptions();
                 } else {
                     showStatus('❌ ' + (data.message || 'Erro desconhecido'), 'error');
                 }
@@ -139,6 +210,15 @@
                     </div>
                 `;
             }
+        }
+        
+        // Função para formatar tamanho do arquivo
+        function formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return 'N/A';
+            
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
         }
         
         // Renderizar lista de transcrições
@@ -159,37 +239,44 @@
                     return `
                         <div class="transcription-card">
                             <div class="card-header">
-                                <h3 class="patient-name">${escapeHtml(t.patient_name || 'Sem nome')}</h3>
-                                <div class="date-info">${escapeHtml(t.modified_date || 'Data não disponível')}</div>
+                                <div class="header-left">
+                                    <h3 class="patient-name">${escapeHtml(t.patient_name || 'Sem nome')}</h3>
+                                    <div class="card-meta">
+                                        <div class="date-info">📅 ${escapeHtml(t.modified_date || 'Data não disponível')}</div>
+                                        <div class="size-info">📊 ${formatFileSize(t.file_size)}</div>
+                                        ${t.has_summary ? '<div class="summary-indicator">✅ Resumo disponível</div>' : ''}
+                                    </div>
+                                </div>
+                                
+                                <div class="header-actions">
+                                    <button class="action-btn btn-view" onclick="viewTranscription('${escapeHtml(t.filename)}')" title="Ver Transcrição">
+                                        <i class="fas fa-eye"></i>
+                                        Ver
+                                    </button>
+                                    
+                                    ${t.has_summary ? 
+                                        `<button class="action-btn btn-view-summary" onclick="viewSummary('${escapeHtml(t.summary_filename)}')" title="Ver Resumo">
+                                            <i class="fas fa-file-alt"></i>
+                                            Resumo
+                                        </button>` :
+                                        `<button class="action-btn btn-summary" onclick="generateSummary('${escapeHtml(t.filename)}')" title="Gerar Resumo">
+                                            <i class="fas fa-magic"></i>
+                                            Gerar
+                                        </button>`
+                                    }
+                                    
+                                    <button class="action-btn btn-download" onclick="downloadTranscription('${escapeHtml(t.filename)}')" title="Download">
+                                        <i class="fas fa-download"></i>
+                                        Download
+                                    </button>
+                                </div>
                             </div>
                             
-                            <div class="preview-text">
-                                "${escapeHtml((t.preview || 'Prévia não disponível').substring(0, 150))}${(t.preview || '').length > 150 ? '...' : ''}"
-                            </div>
-                            
-                            ${t.has_summary ? '<div class="summary-indicator">✅ Resumo disponível</div>' : ''}
-                            
-                            <div class="card-actions">
-                                <button class="action-btn btn-view" onclick="viewTranscription('${escapeHtml(t.filename)}')">
-                                    <i class="fas fa-eye"></i>
-                                    Ver Transcrição
-                                </button>
-                                
-                                ${t.has_summary ? 
-                                    `<button class="action-btn btn-view-summary" onclick="viewSummary('${escapeHtml(t.summary_filename)}')">
-                                        <i class="fas fa-file-alt"></i>
-                                        Ver Resumo
-                                    </button>` :
-                                    `<button class="action-btn btn-summary" onclick="generateSummary('${escapeHtml(t.filename)}')">
-                                        <i class="fas fa-magic"></i>
-                                        Gerar Resumo
-                                    </button>`
-                                }
-                                
-                                <button class="action-btn btn-download" onclick="downloadTranscription('${escapeHtml(t.filename)}')">
-                                    <i class="fas fa-download"></i>
-                                    Download
-                                </button>
+                            <div class="card-content">
+                                <div class="preview-container">
+                                    <label class="preview-label">📄 Prévia da Transcrição:</label>
+                                    <textarea class="preview-text" readonly rows="4">${escapeHtml((t.preview || 'Prévia não disponível'))}</textarea>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -280,8 +367,12 @@
         }
         
         // Visualizar resumo existente
+        let currentSummaryFilename = '';
+        
+        // Atualizar função viewSummary para armazenar o filename
         async function viewSummary(filename) {
             try {
+                currentSummaryFilename = filename;
                 const response = await fetch(`/api/view_summary/${encodeURIComponent(filename)}`);
                 const data = await response.json();
                 
@@ -296,9 +387,92 @@
             }
         }
         
+        // Função para exportar resumo em PDF
+        function exportSummaryPDF() {
+            if (!currentSummaryFilename) {
+                showStatus('❌ Nenhum resumo selecionado', 'error');
+                return;
+            }
+            
+            showStatus('📄 Gerando PDF...', 'info');
+            window.open(`/export_summary_pdf/${encodeURIComponent(currentSummaryFilename)}`, '_blank');
+            
+            setTimeout(() => {
+                showStatus('✅ PDF gerado com sucesso!', 'success');
+            }, 1000);
+        }
+        
+        // Função para exportar resumo em DOCX
+        function exportSummaryDOCX() {
+            if (!currentSummaryFilename) {
+                showStatus('❌ Nenhum resumo selecionado', 'error');
+                return;
+            }
+            
+            showStatus('📝 Gerando DOCX...', 'info');
+            window.open(`/export_summary_docx/${encodeURIComponent(currentSummaryFilename)}`, '_blank');
+            
+            setTimeout(() => {
+                showStatus('✅ DOCX gerado com sucesso!', 'success');
+            }, 1000);
+        }
+        
+        // Atualizar função generateSummaryWithPrompt para armazenar filename
+        async function generateSummaryWithPrompt() {
+            const customPrompt = document.getElementById('customPromptInput').value.trim();
+            
+            try {
+                closePromptModal();
+                showStatus('🤖 Gerando resumo personalizado com IA...', 'info');
+                
+                const response = await fetch('/api/generate_summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        filename: currentFilename,
+                        custom_prompt: customPrompt
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('✅ ' + data.message, 'success');
+                    currentSummaryFilename = data.summary_filename; // Armazenar filename do resumo
+                    document.getElementById('summaryModalContent').textContent = data.summary;
+                    summaryModal.style.display = 'block';
+                    loadTranscriptions(); // Recarregar lista
+                } else {
+                    showStatus('❌ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao gerar resumo: ' + error.message, 'error');
+            }
+        }
+        
         // Download de transcrição
         function downloadTranscription(filename) {
             window.open(`/download_transcription/${encodeURIComponent(filename)}`, '_blank');
+        }
+        
+        // Função para baixar conversa completa
+        function downloadCompleteConversation() {
+            if (!currentSummaryFilename) {
+                showStatus('❌ Nenhum resumo selecionado', 'error');
+                return;
+            }
+            
+            const baseName = currentSummaryFilename.replace('_resumo.txt', '');
+            const completeFilename = baseName + '_conversa_completa.txt';
+            
+            showStatus('📥 Baixando conversa completa...', 'info');
+            window.open(`/download_transcription/${encodeURIComponent(completeFilename)}`, '_blank');
+            
+            setTimeout(() => {
+                showStatus('✅ Download iniciado!', 'success');
+            }, 1000);
         }
         
         // Fechar modais

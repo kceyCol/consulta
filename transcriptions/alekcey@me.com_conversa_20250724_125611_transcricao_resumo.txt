@@ -1,0 +1,22 @@
+## RESUMO DA CONSULTA
+
+**Data:** Não especificada
+**Paciente:** Não especificado
+
+### 🔍 QUEIXA PRINCIPAL
+Dúvida sobre como iniciar o procedimento de gravação para a realização de um teste.
+
+### 📋 HISTÓRICO
+Não mencionado. A "consulta" apresentada não envolve histórico médico.
+
+### 🩺 EXAME FÍSICO
+Não realizado/Não aplicável, visto que a "consulta" é uma questão técnica e não uma avaliação clínica.
+
+### 💊 CONDUTA/TRATAMENTO
+Nenhuma conduta médica, medicação ou tratamento foi prescrito na transcrição fornecida. A transcrição contém apenas a pergunta do usuário.
+
+### 📝 OBSERVAÇÕES IMPORTANTES
+A "consulta" apresentada na transcrição é de natureza técnica/operacional, relacionada a um procedimento de gravação, e não constitui uma consulta médica com queixas clínicas ou sintomas de saúde.
+
+### 🔄 RETORNO
+Não especificado.
